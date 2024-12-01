@@ -1,47 +1,27 @@
-# La Wallet Module Template
+# NostWard
 
-## Usage
+**NostWard** is a system that connects events from the **Nostr** protocol to external applications through webhooks.
 
-Use this as a template from github and follow the next steps before using:
+## Key Features
 
-1. Use the correct nvm version
-```bash
-nvm use
-```
-2. Copy the .env.example
-```bash
-cp .env.example .env
-```
-3. [Generate](https://nostrdebug.lacrypta.ar/publish) a nostr key pair and put
-   it in the variables `NOSTR_PRIVATE_KEY` and `NOSTR_PUBLIC_KEY`
+1. **Subscriptions**  
+   Allows users to subscribe to Nostr events using custom filters and receive notifications via webhooks.
 
-## Installation
+2. **Credit Management**  
+   Implements a credit-based system to control notifications sent to webhooks.
 
-```bash
-pnpm i
-```
+3. **Retry System**  
+   A retry mechanism is implemented for webhook requests in case of failures, ensuring reliable delivery of notifications.
 
-## Testing
+4. **Lightning Network Integration**  
+   Credits can be purchased using Lightning payments, aligning with the decentralized philosophy of the Nostr protocol.
 
-```bash
-pnpm test
-```
+## Endpoint Documentation
 
-## Linting and prettier
+### Credits
+- [**Buy Credits**](./api-doc/credits/buy_credits.md)  
+  Endpoint to handle credit purchase requests.
 
-```bash
-pnpm lint
-pnpm prettier
-```
-
-## Development Server
-
-```bash
-pnpm dev
-```
-
-## Docker Server
-
-```bash
-docker compose up
-```
+### Subscriptions
+- [**Create Subscription**](./api-doc/subscriptions/create_subscription.md)  
+  Creates a new subscription to receive events.
