@@ -15,7 +15,6 @@ The request body must contain a valid NOSTR event of kind `9734` (Zap Request), 
   "kind": 9734,
   "content": "",
   "tags": [
-    ["t", "buy-credits"],
     ["amount", "21000"],
     ["p", "ADMIN_PUBKEY"]
   ],
@@ -28,7 +27,6 @@ The request body must contain a valid NOSTR event of kind `9734` (Zap Request), 
 The server will validate the following:
 1. **Signature**: The event must be signed by the `pubkey` specified in the request.
 2. **Zap Request Structure**:
-   - The tag `["t", "buy-credits"]` must be present to indicate a request to purchase credits.
    - The tag `["amount", "value"]` must be present, where `value` is the amount in millisatoshis (mSAT) to zap.
    - The tag `["p", "ADMIN_PUBKEY"]` must be included to ensure the zap is directed to the admin.
 
