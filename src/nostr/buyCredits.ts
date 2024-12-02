@@ -1,9 +1,10 @@
-import { EventHandler, logger } from '@lawallet/module';
+import { EventHandler, logger, requiredEnvVar } from '@lawallet/module';
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { NDKFilter, NostrEvent } from 'node_modules/@nostr-dev-kit/ndk/dist';
 import redis from '@services/redis';
 import { Debugger } from 'debug';
 import { ExtendedContext } from '..';
+import { buildCreditsEvent } from '@lib/events';
 
 const log: Debugger = logger.extend('nostr:buyCredits');
 const warn: Debugger = log.extend('warn');
@@ -12,9 +13,9 @@ const error: Debugger = log.extend('error');
 const invoiceAmountRegex: RegExp = /^\D+(?<amount>\d+)(?<multiplier>[mnpu]?)1/i;
 
 const filter: NDKFilter = {
-  authors: ["e17feb5f2cf83546bcf7fd9c8237b05275be958bd521543c2285ffc6c2d654b3"],
+  authors: ['e17feb5f2cf83546bcf7fd9c8237b05275be958bd521543c2285ffc6c2d654b3'],
   kinds: [9735],
-  '#p': ["3f5a30545c6044c8ac445cd21b36921faf0c337e0ab59bde99e6cb864e971c68"],
+  '#p': [requiredEnvVar('NOSTR_PUBLIC_KEY')],
   since: Math.floor(Date.now() / 1000) - 86000,
   until: Math.floor(Date.now() / 1000) + 86000,
 };
@@ -27,19 +28,17 @@ function extractAmount(invoice: string): bigint | null {
 
   if (matches && matches.groups) {
     const multipliers: Record<string, bigint> = {
-      p: BigInt(1e-1), // picobitcoin
-      n: BigInt(1e2), // nanobitcoin
-      u: BigInt(1e5), // microbitcoin
-      m: BigInt(1e8), // millibitcoin
-      '': BigInt(1e11), // bitcoin (default)
+      n: BigInt(1e2),     // nanobitcoin
+      u: BigInt(1e5),     // microbitcoin
+      m: BigInt(1e8),     // millibitcoin
+      '': BigInt(1e11),   // bitcoin
     };
-
     try {
-      if (!matches.groups["multiplier"] || !matches.groups["amount"]) return null;
+      if (!matches.groups['multiplier'] || !matches.groups['amount']) return null;
 
       // Convierte la cantidad y multiplica
-      const amount = BigInt(matches.groups["amount"]);
-      const multiplier = multipliers[matches.groups["multiplier"].toLowerCase()];
+      const amount = BigInt(matches.groups['amount']);
+      const multiplier = multipliers[matches.groups['multiplier'].toLowerCase()];
 
       if (multiplier === undefined) return null;
 
@@ -53,7 +52,7 @@ function extractAmount(invoice: string): bigint | null {
 }
 
 /**
- * Extract value of first "bolt11" tag, or null if none found
+ * Extract value of first 'bolt11' tag, or null if none found
  */
 function extractBolt11(event: NostrEvent): string | null {
   const bolt11 = event.tags.find((t) => 'bolt11' === t[0]);
@@ -79,11 +78,10 @@ function getHandler(
     const nostrEvent = await (event as NDKEvent).toNostrEvent();
 
     if (event.id === undefined) {
-
       throw new Error('Received event without id from relay');
     }
 
-    if ((await redis.hGet(event.id, "handled") !== null)) {
+    if ((await redis.hGet(event.id, 'handled') !== null)) {
       log('Already handled event %s', event.id);
       return;
     }
@@ -94,30 +92,35 @@ function getHandler(
       const bolt11 = extractBolt11(nostrEvent);
 
       if (null === bolt11) {
-        warn('Received internal tx without invoice');
+        warn('Received zap without invoice');
         return;
       }
 
       const amount = extractAmount(bolt11);
-      const description = extractZapRequest(event)
-
-      if (null === description) {
-        throw new Error("Zap request not found")
-      }
-
       if (null === amount || amount < 1000) {
-        throw new Error("The amount is less than 1000 mSat")
+        throw new Error('The amount is less than 1000 mSat')
+      }
+      
+      const description = extractZapRequest(event)
+      if (null === description) {
+        throw new Error('Zap request not found')
       }
 
       const zapRequest = JSON.parse(description)
-      const pubkey = zapRequest.pubkey;
+      if (!zapRequest || zapRequest.pubkey !== requiredEnvVar("NOSTR_PUBLIC_KEY")) {
+        log('The zap request was not issued by the admin public key');
+        return;
+      }
+
+      const { receiver: pubkey } = JSON.parse(zapRequest.content);
       if (!pubkey) {
-        throw new Error("Zap request does not have a valid pubkey");
+        log('Receiver pubkey not found');
+        return;
       }
 
       const credits = (Number(amount.toString()) / 1000) * 10;
 
-      await _ctx.prisma.identity.upsert({
+      const identity = await _ctx.prisma.identity.upsert({
         where: { pubkey },
         update: { credits: { increment: credits } },
         create: {
@@ -125,12 +128,12 @@ function getHandler(
           credits,
         },
       });
-      
+
+      await _ctx.outbox.publish(buildCreditsEvent(identity.pubkey, identity.credits))
 
       log(`Added ${credits} credits to user with pubkey: ${pubkey}`);
-
-      // Setear el evento como "handled" en Redis para evitar procesarlo nuevamente
-      await redis.hSet(event.id, "handled", "true");
+      
+      await redis.hSet(event.id, 'handled', 'true');
 
       log(`Marked event ${event.id} as handled`);
 

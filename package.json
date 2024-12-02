@@ -15,7 +15,7 @@
   },
   "scripts": {
     "postinstall": "prisma generate",
-    "test": "DOTENV_CONFIG_PATH=.env.test jest --runInBand",
+    "test": "DOTENV_CONFIG_PATH=.env.test NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "test:v": "DEBUG='*,-babel jest --verbose' DOTENV_CONFIG_PATH=.env.test jest --runInBand",
     "test:watch": "DOTENV_CONFIG_PATH=.env.test jest --watch",
     "dev": "concurrently \"pnpm run build:watch\" \"pnpm run dev:watch\"",
@@ -47,7 +47,7 @@
     "express": "^4.19.2",
     "fs": "0.0.1-security",
     "glob": "^10.3.15",
-    "nostr-tools": "npm:@lawallet/nostr-tools@^1.17.0",
+    "nostr-tools": "2.7.2",
     "redis": "^4.7.0",
     "websocket-polyfill": "^0.0.3",
     "ws": "^8.17.0"
@@ -82,13 +82,5 @@
     "ts-jest-mock-import-meta": "^1.2.0",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5"
-  },
-  "overrides": {
-    "nostr-tools": "npm:@lawallet/nostr-tools"
-  },
-  "pnpm": {
-    "overrides": {
-      "nostr-tools": "npm:@lawallet/nostr-tools"
-    }
   }
 }
