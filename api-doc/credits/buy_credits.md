@@ -15,6 +15,7 @@ The request body must contain a valid NOSTR event of kind `9734` (Zap Request), 
   "kind": 9734,
   "content": "",
   "tags": [
+    ["relays", "NOSTR_RELAYS"],
     ["amount", "21000"],
     ["p", "ADMIN_PUBKEY"]
   ],
