@@ -1,23 +1,23 @@
 # Request Credits
 
-Request credits by sending a **Zap Request** (NIP-57) to the admin's public key. This will return a Lightning Payment Request to complete the payment. The server will listen for the Zap Receipt (kind 9735) to confirm the payment and credit the user's account.
+Request credits by sending a **Nostr Event** of kind `21111` to the server. The server will generate a **Zap Request** (NIP-57) directed to the admin's public key with the correct parameters and return a Lightning Payment Request. The server will listen for the Zap Receipt (kind `9735`) to confirm the payment and credit the user's account.
 
 ## Request
 `POST /credits/request`
 
 ### Parameters
 
-The request body must contain a valid NOSTR event of kind `9734` (Zap Request), signed by the user's `pubkey`.
+The request body must contain a valid Nostr event of kind `21111`, signed by the user's `pubkey`.
 
-### Example Request
+#### Example Request
+
 ```json
 {
-  "kind": 9734,
+  "kind": 21111,
   "content": "",
   "tags": [
-    ["relays", "NOSTR_RELAYS"],
-    ["amount", "21000"],
-    ["p", "ADMIN_PUBKEY"]
+    ["t", "buy-credits"],
+    ["amount", "10"]
   ],
   "pubkey": "USER_PUBKEY",
   "sig": "VALID_SIGNATURE"
@@ -25,30 +25,53 @@ The request body must contain a valid NOSTR event of kind `9734` (Zap Request), 
 ```
 
 ### Validation
+
 The server will validate the following:
+
 1. **Signature**: The event must be signed by the `pubkey` specified in the request.
-2. **Zap Request Structure**:
-   - The tag `["amount", "value"]` must be present, where `value` is the amount in millisatoshis (mSAT) to zap.
-   - The tag `["p", "ADMIN_PUBKEY"]` must be included to ensure the zap is directed to the admin.
+2. **Event Structure**:
+   - The event must be of kind `21111`.
+   - The tag `["t", "buy-credits"]` must be present.
+   - The tag `["amount", "credits"]` must be present, where `credits` is the number of credits requested. The value must be at least `10`.
 
-### Response
-If the request is valid, the server will return a Lightning Payment Request for the specified amount.
+### Process
 
-#### Example Response
+1. **Event Validation**:
+   - The server validates the signature and structure of the event.
+
+2. **Zap Request Generation**:
+   - The server generates a Zap Request (kind `9734`) with the following details:
+     - The `ADMIN_PUBKEY` as the recipient.
+     - The amount in mSAT (`credits * 100`).
+     - The relays to use (defined in `NOSTR_RELAYS`).
+     - A reference to the user's `pubkey`.
+
+3. **Lightning Payment Request**:
+   - A Lightning Payment Request is created for the specified amount in mSAT.
+
+4. **Response**:
+   - The server returns the Lightning Payment Request to the user.
+
+### Example Response
+
 ```json
 {
-    "paymentRequest": "lnbc21000n1p..."
+  "success": true,
+  "message": "lnbc10000n1p..."
 }
 ```
 
 ### Credit Allocation
+
 Once the Zap Receipt (kind `9735`) is detected:
+
 1. The server verifies the receipt:
    - Confirms the payment was directed to `ADMIN_PUBKEY`.
    - Matches the `amount` in the receipt with the original Zap Request.
    - Ensures the sender's `pubkey` matches `USER_PUBKEY`.
+
 2. Credits are added to the `USER_PUBKEY` account in the database:
-   - The amount of credits is determined by a pre-defined conversion rate (e.g., `1 credit = 100 mSAT`).
+   - The amount of credits is determined by a predefined conversion rate (`1 credit = 100 mSAT`).
 
 ## Admin Announcement of Remaining Credits
 
@@ -80,7 +103,7 @@ The `ADMIN_PUBKEY` will periodically announce the remaining credits for a user i
 ```
 
 ### Notes:
-- This event serves as a broadcast mechanism for the administrator to announce the current credit balance of a specific user.
-- The `amount` tag reflects the user's remaining credits.
-- The `d` tag ensures that the event is uniquely tied to the user's public key for easy retrieval in the NOSTR ecosystem.
 
+- **Conversion Rate**: 1 credit = 100 mSAT.
+- **Validation**: Events are validated to ensure they follow the expected structure and tags.
+- **Transparency**: Users can track their credit balance via announcements from the `ADMIN_PUBKEY`.
