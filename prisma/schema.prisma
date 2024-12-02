@@ -21,8 +21,8 @@ model Identity {
 model Subscriptions {
   id           String          @id @default(uuid())
   userId       String
-  filters      Json
-  relays       Json
+  filters      Json[]
+  relays       String[]
   webhook      String
   lastEventId  String?
   lastSeenAt   DateTime?

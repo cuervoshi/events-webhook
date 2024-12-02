@@ -129,12 +129,11 @@ function getHandler(
         },
       });
 
+      
       await _ctx.outbox.publish(buildCreditsEvent(identity.pubkey, identity.credits))
-
       log(`Added ${credits} credits to user with pubkey: ${pubkey}`);
       
       await redis.hSet(event.id, 'handled', 'true');
-
       log(`Marked event ${event.id} as handled`);
 
     } catch (err) {
