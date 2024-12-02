@@ -7,18 +7,28 @@ import {
 } from '@lawallet/module';
 import { PrismaClient } from '@prisma/client';
 
-type Context = DefaultContext & { prisma: PrismaClient };
+export type ExtendedContext = DefaultContext & { prisma: PrismaClient };
 
-const context: Context = {
+const context: ExtendedContext = {
   outbox: new DirectOutbox(getWriteNDK()),
   prisma: new PrismaClient(),
 };
 
-const module = Module.build<Context>({
-  context,
-  nostrPath: `${import.meta.dirname}/nostr`,
-  port: Number(requiredEnvVar('PORT')),
-  restPath: `${import.meta.dirname}/rest`,
-});
+import path from 'path';
+import {fileURLToPath} from 'url';
 
-void module.start();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+try {
+  const module = Module.build<ExtendedContext>({
+    context,
+    nostrPath: `${__dirname}/nostr`,
+    port: Number(requiredEnvVar('PORT')),
+    restPath: `${__dirname}/rest`,
+  }) as Module<ExtendedContext>;
+  
+  void module.start();
+} catch (err) {
+  console.log(err)
+}

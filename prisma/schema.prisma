@@ -3,40 +3,62 @@ generator client {
 }
 
 datasource db {
-  provider = "postgres"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Credits {
-  pubkey  String  @id
-  credits Int
+model Identity {
+  id             String          @id @default(uuid())
+  pubkey         String          @unique
+  credits        Int             @default(0)
+  Subscriptions  Subscriptions[]
+  CreditPurchases CreditPurchase[]
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Subscriptions {
-  id           Int      @id @default(autoincrement())
-  pubkey       String
+  id           String          @id @default(uuid())
+  userId       String
   filters      Json
   relays       Json
   webhook      String
   lastEventId  String?
   lastSeenAt   DateTime?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
   EventLogs    EventLog[]
+
+  Identity     Identity         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model EventLog {
-  id              Int      @id @default(autoincrement())
-  subscriptionId  Int
+  id              String        @id @default(uuid())
+  subscriptionId  String
   eventId         String
   status          Status
-  timestamp       DateTime @default(now())
+  timestamp       DateTime      @default(now())
   webhookResponse String?
 
-  subscription Subscriptions @relation(fields: [subscriptionId], references: [id])
+  subscription    Subscriptions @relation(fields: [subscriptionId], references: [id])
 
   @@index([subscriptionId])
+}
+
+model CreditPurchase {
+  id           String    @id @default(uuid())
+  userId       String
+  amount       Int
+  zapReceipt   Json      // Recibo del zap (evento Nostr 9735)
+  createdAt    DateTime  @default(now())
+
+  Identity     Identity   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 enum Status {
