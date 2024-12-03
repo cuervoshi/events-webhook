@@ -3,7 +3,7 @@
 Create a subscription to be notified via webhook when specific events match the defined filters.
 
 ## Request
-`POST /subscriptions/create`
+`POST /subscriptions`
 
 ### Parameters
 

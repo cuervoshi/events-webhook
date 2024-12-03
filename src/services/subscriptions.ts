@@ -17,6 +17,8 @@ export class SubscriptionManager {
         this.ndk.pool.on('relay:connect', (relay: NDKRelay) => {
             this.handleRelayConnect(relay);
         });
+
+        this.loadSubscriptions();
     }
 
     async loadSubscriptions(): Promise<void> {
