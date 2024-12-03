@@ -69,7 +69,6 @@ async function handler(
     }
 
     try {
-        console.log(JSON.parse(reqEvent.content))
         // Validate the request body using Zod
         const { filters, relays, webhook } = SubscriptionRequestSchema.parse(JSON.parse(reqEvent.content));
 

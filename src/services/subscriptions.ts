@@ -1,18 +1,22 @@
 import { PrismaClient, Subscriptions as PrismaSubscription } from '@prisma/client';
 import NDK, { NDKRelay, NDKSubscription, NDKEvent, NDKRelayStatus, NDKFilter } from '@nostr-dev-kit/ndk';
 import { Debugger } from 'debug';
-import { logger } from '@lawallet/module';
+import { DirectOutbox, logger } from '@lawallet/module';
+import redis from '@services/redis';
+import { WebhookService } from './webhook';
 
 const log: Debugger = logger.extend('services:subManager');
 
 export class SubscriptionManager {
     private prisma: PrismaClient;
+    private outbox: DirectOutbox;
     private ndk: NDK;
     private subscriptions: Map<string, { subscription: NDKSubscription; data: PrismaSubscription }> = new Map();
 
-    constructor(prisma: PrismaClient, ndk: NDK) {
+    constructor(prisma: PrismaClient, outbox: DirectOutbox, ndk: NDK) {
         this.prisma = prisma;
         this.ndk = ndk;
+        this.outbox = outbox;
 
         this.ndk.pool.on('relay:connect', (relay: NDKRelay) => {
             this.handleRelayConnect(relay);
@@ -42,9 +46,9 @@ export class SubscriptionManager {
     }
 
     async addSubscription(subscription: PrismaSubscription): Promise<void> {
-        const { id, filters, relays, webhook } = subscription;
+        const { id, lastSeenAt, filters, relays, webhook } = subscription;
 
-        const ndkSubscription = new NDKSubscription(this.ndk, filters as NDKFilter[], { closeOnEose: false })
+        const ndkSubscription = new NDKSubscription(this.ndk, this.adjustFilters(lastSeenAt, filters as NDKFilter[]), { closeOnEose: false })
 
         ndkSubscription.on('event', (event: NDKEvent) => {
             this.handleEvent(id, webhook, event);
@@ -72,7 +76,8 @@ export class SubscriptionManager {
         const sub = this.subscriptions.get(subscriptionId);
 
         if (sub) {
-            sub.subscription.stop(); 
+            sub.subscription.stop();
+            sub.subscription.removeAllListeners();
             this.subscriptions.delete(subscriptionId);
             log(`Subscription ${subscriptionId} removed.`);
         }
@@ -86,7 +91,21 @@ export class SubscriptionManager {
 
     private async handleEvent(subscriptionId: string, webhook: string, event: NDKEvent): Promise<void> {
         log(`Event received for subscription ${subscriptionId}:`, event.id);
+
+
+        if (event.id === undefined) {
+            throw new Error('Received event without id from relay');
+        }
+
+        if ((await redis.hGet(event.id, 'handled') !== null)) {
+            log('Already handled event %s', event.id);
+            return;
+        }
+
         log(webhook)
+
+        const webhookService = new WebhookService(webhook, this.prisma, this.outbox)
+        console.log(webhookService)
 
         // Log the event in the database
         /*await this.prisma.eventLog.create({
@@ -99,6 +118,7 @@ export class SubscriptionManager {
 
         try {
             //await this.webhookService.sendWithRetries(webhook, event);
+            //await redis.hSet(event.id, 'handled', 'true');
         } catch (error) {
             console.error(`Failed to send event to webhook for subscription ${subscriptionId}:`, error);
             /*await this.prisma.eventLog.updateMany({
@@ -108,14 +128,26 @@ export class SubscriptionManager {
         }
     }
 
+    private adjustFilters(lastSeenAt: Date | null, filters: NDKFilter[]) {
+        const adjustedFilters = lastSeenAt ? filters.map(filter => {
+            const adjustedFilter = { ...filter };
+            if (lastSeenAt) {
+                adjustedFilter.since = Math.floor(new Date(lastSeenAt).getTime() / 1000);
+            }
+            return adjustedFilter;
+        }) : filters;
+
+        return adjustedFilters;
+    }
+
     private handleRelayConnect(relay: NDKRelay): void {
-        log(`Relay connected: ${relay.url}`);
+        log(`relay connected: ${relay.url}`);
 
         // Re-subscribe for all subscriptions that include this relay
         for (const [id, { subscription, data }] of this.subscriptions.entries()) {
             if (data.relays.includes(relay.url)) {
-                relay.subscribe(subscription, subscription.filters);
-                log(`Re-subscribed subscription ${id} to relay ${relay.url}`);
+                relay.subscribe(subscription, this.adjustFilters(data.lastSeenAt, subscription.filters));
+                log(`re-subscribed subscription ${id} to relay ${relay.url}`);
             }
         }
     }

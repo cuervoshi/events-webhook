@@ -13,10 +13,11 @@ export type ExtendedContext = DefaultContext & { prisma: PrismaClient, subManage
 
 const prisma = new PrismaClient()
 const writeNdk = getWriteNDK();
-const subManager = new SubscriptionManager(prisma, getReadNDK());
+const outbox = new DirectOutbox(writeNdk);
+const subManager = new SubscriptionManager(prisma, outbox, getReadNDK());
 
 const context: ExtendedContext = {
-  outbox: new DirectOutbox(writeNdk),
+  outbox,
   prisma,
   subManager
 };
