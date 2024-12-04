@@ -8,6 +8,8 @@ import {
 } from '@lawallet/module';
 import { PrismaClient } from '@prisma/client';
 import { SubscriptionManager } from './services/subscriptions.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 export type ExtendedContext = DefaultContext & { prisma: PrismaClient, subManager: SubscriptionManager };
 
@@ -21,9 +23,6 @@ const context: ExtendedContext = {
   prisma,
   subManager
 };
-
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

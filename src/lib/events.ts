@@ -13,3 +13,19 @@ export function buildCreditsEvent(pubkey: string, credits: number): NostrEvent {
         ]
     }
 }
+
+export function buildLogEvent(subscriptionId: string, status: string, response: string | null, attempt: number): NostrEvent {
+    return {
+        pubkey: requiredEnvVar("NOSTR_PUBLIC_KEY"),
+        kind: 1112,
+        content: JSON.stringify({
+            status,
+            response,
+            attempt
+        }),
+        created_at: nowInSeconds(),
+        tags: [
+            ['t', `log:${subscriptionId}`],
+        ]
+    }
+}

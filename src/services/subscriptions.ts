@@ -3,26 +3,29 @@ import NDK, { NDKRelay, NDKSubscription, NDKEvent, NDKRelayStatus, NDKFilter } f
 import { Debugger } from 'debug';
 import { DirectOutbox, logger } from '@lawallet/module';
 import redis from '@services/redis';
-import { WebhookService } from './webhook';
+import { WebhookDispatcher } from './dispatcher';
 
 const log: Debugger = logger.extend('services:subManager');
 
 export class SubscriptionManager {
     private prisma: PrismaClient;
-    private outbox: DirectOutbox;
     private ndk: NDK;
+    //private outbox: DirectOutbox;
+    private dispatcher: WebhookDispatcher;
     private subscriptions: Map<string, { subscription: NDKSubscription; data: PrismaSubscription }> = new Map();
 
     constructor(prisma: PrismaClient, outbox: DirectOutbox, ndk: NDK) {
         this.prisma = prisma;
         this.ndk = ndk;
-        this.outbox = outbox;
+        //this.outbox = outbox;
 
         this.ndk.pool.on('relay:connect', (relay: NDKRelay) => {
             this.handleRelayConnect(relay);
         });
 
         this.loadSubscriptions();
+
+        this.dispatcher = new WebhookDispatcher(prisma, outbox, this)        
     }
 
     async loadSubscriptions(): Promise<void> {
@@ -80,6 +83,27 @@ export class SubscriptionManager {
             sub.subscription.removeAllListeners();
             this.subscriptions.delete(subscriptionId);
             log(`Subscription ${subscriptionId} removed.`);
+
+            const relaysToCheck = sub.data.relays;
+            for (const relayUrl of relaysToCheck) {
+                let isRelayUsed = false;
+
+                for (const [otherSubId, otherSub] of this.subscriptions.entries()) {
+                    if (otherSubId !== subscriptionId && otherSub.data.relays.includes(relayUrl)) {
+                        isRelayUsed = true;
+                        break;
+                    }
+                }
+
+                if (!isRelayUsed) {
+                    const relay = this.ndk.pool.relays.get(relayUrl);
+                    if (relay) {
+                        relay.disconnect();
+                        this.ndk.pool.relays.delete(relayUrl);
+                        log(`Relay ${relayUrl} disconnected and removed from NDK pool.`);
+                    }
+                }
+            }
         }
     }
 
@@ -87,6 +111,31 @@ export class SubscriptionManager {
         await this.removeSubscription(subscription.id);
         await this.addSubscription(subscription);
         log(`Subscription ${subscription.id} updated.`);
+    }
+
+    public async deactivateSubscription(subscriptionId: string): Promise<void> {
+        await this.removeSubscription(subscriptionId);
+
+        await this.prisma.subscriptions.update({
+            where: { id: subscriptionId },
+            data: {
+                active: false,
+            },
+        });
+
+        log(`Subscription ${subscriptionId} deactivated.`);
+    }
+
+    public async updateLastSeenAt(subscriptionId: string, timestamp: number): Promise<void> {
+        const newSub = await this.prisma.subscriptions.update({
+            where: { id: subscriptionId },
+            data: {
+                lastSeenAt: timestamp,
+            },
+        });
+
+        this.updateSubscription(newSub)
+        log(`Subscription ${subscriptionId} lastSeenAt updated to ${timestamp}.`);
     }
 
     private async handleEvent(subscriptionId: string, webhook: string, event: NDKEvent): Promise<void> {
@@ -97,42 +146,21 @@ export class SubscriptionManager {
             throw new Error('Received event without id from relay');
         }
 
-        if ((await redis.hGet(event.id, 'handled') !== null)) {
+        if ((await redis.hGet(`${subscriptionId}:${event.id}`, 'handled') !== null)) {
             log('Already handled event %s', event.id);
             return;
         }
 
-        log(webhook)
+        let nostrEvent = await event.toNostrEvent()
 
-        const webhookService = new WebhookService(webhook, this.prisma, this.outbox)
-        console.log(webhookService)
-
-        // Log the event in the database
-        /*await this.prisma.eventLog.create({
-            data: {
-                subscriptionId,
-                eventId: event.id,
-                status: 'success',
-            },
-        });*/
-
-        try {
-            //await this.webhookService.sendWithRetries(webhook, event);
-            //await redis.hSet(event.id, 'handled', 'true');
-        } catch (error) {
-            console.error(`Failed to send event to webhook for subscription ${subscriptionId}:`, error);
-            /*await this.prisma.eventLog.updateMany({
-                where: { subscriptionId, eventId: event.id },
-                data: { status: 'failed', webhookResponse: (error as Error).message },
-            });*/
-        }
+        this.dispatcher.enqueueWebhook(nostrEvent, subscriptionId, webhook)
     }
 
-    private adjustFilters(lastSeenAt: Date | null, filters: NDKFilter[]) {
+    private adjustFilters(lastSeenAt: number | null, filters: NDKFilter[]) {
         const adjustedFilters = lastSeenAt ? filters.map(filter => {
             const adjustedFilter = { ...filter };
             if (lastSeenAt) {
-                adjustedFilter.since = Math.floor(new Date(lastSeenAt).getTime() / 1000);
+                adjustedFilter.since = lastSeenAt;
             }
             return adjustedFilter;
         }) : filters;
