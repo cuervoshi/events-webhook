@@ -7,7 +7,6 @@ import { Debugger } from 'debug';
 
 const log: Debugger = logger.extend('rest:subscriptions:post');
 
-// Zod schema for validating NDKFilters
 const StaticNDKFilterSchema = z.object({
     ids: z.array(z.string()).optional(),
     kinds: z.array(z.number()).optional(),
@@ -16,17 +15,27 @@ const StaticNDKFilterSchema = z.object({
     until: z.number().optional(),
     limit: z.number().optional(),
     search: z.string().optional(),
-})
+});
 
-// Dynamic keys starting with "#"
-/*const DynamicNDKFilterSchema = z.record(
-    z.string().regex(/^#\w+$/),
-    z.array(z.string()).optional(),
-);*/
+const NDKFilterSchema = StaticNDKFilterSchema.catchall(
+    z.array(z.string()).optional()
+);
 
-// Combine static and dynamic schemas
-//const NDKFilterSchema = z.intersection(StaticNDKFilterSchema, DynamicNDKFilterSchema);
-const FiltersSchema = z.array(StaticNDKFilterSchema);
+const FiltersSchema = z.array(
+    NDKFilterSchema.superRefine((obj, ctx) => {
+        Object.keys(obj).forEach((key) => {
+            if (key.startsWith("#")) {
+                if (!/^#\w+$/.test(key)) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: `Dynamic key "${key}" does not match pattern /^#\\w+$/`,
+                        path: [key],
+                    });
+                }
+            }
+        });
+    })
+);
 
 // Zod schema for the full request body
 const SubscriptionRequestSchema = z.object({
