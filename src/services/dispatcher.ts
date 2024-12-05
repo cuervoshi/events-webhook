@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { PrismaClient } from '@prisma/client';
-import { DirectOutbox, logger, nowInSeconds, requiredEnvVar } from '@lawallet/module';
+import { DirectOutbox, logger, requiredEnvVar } from '@lawallet/module';
 import { buildLogEvent } from '@lib/events';
 import { NostrEvent } from '@nostr-dev-kit/ndk';
 import { Queue, Worker, Job } from 'bullmq';
@@ -90,8 +90,7 @@ export class WebhookDispatcher {
         // Log success and update subscription
         await this.logEvent(subscriptionId, event.id, 'success', null, job.attemptsMade);
 
-        const newTimestamp = nowInSeconds() + 1;
-        await this.subscriptionManager.updateLastSeenAt(subscriptionId, newTimestamp);
+        await this.subscriptionManager.discountCredit(subscriptionId);
 
         await redis.hSet(cacheKey, 'handled', 'true');
       } else {

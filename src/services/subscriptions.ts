@@ -1,7 +1,7 @@
 import { PrismaClient, Subscriptions as PrismaSubscription } from '@prisma/client';
 import NDK, { NDKRelay, NDKSubscription, NDKEvent, NDKRelayStatus, NDKFilter } from '@nostr-dev-kit/ndk';
 import { Debugger } from 'debug';
-import { DirectOutbox, logger } from '@lawallet/module';
+import { DirectOutbox, logger, nowInSeconds } from '@lawallet/module';
 import redis from '@services/redis';
 import { WebhookDispatcher } from './dispatcher';
 
@@ -25,7 +25,7 @@ export class SubscriptionManager {
 
         this.loadSubscriptions();
 
-        this.dispatcher = new WebhookDispatcher(prisma, outbox, this)        
+        this.dispatcher = new WebhookDispatcher(prisma, outbox, this)
     }
 
     async loadSubscriptions(): Promise<void> {
@@ -46,6 +46,61 @@ export class SubscriptionManager {
         }
 
         //log('All active subscriptions with valid credits have been loaded.');
+    }
+
+    /**
+     * Deducts one credit from the user who owns the subscription.
+     * If the user runs out of credits, it deactivates all their active subscriptions.
+     * @param subscriptionId - The ID of the subscription.
+     */
+    public async discountCredit(subscriptionId: string): Promise<void> {
+        await this.prisma.$transaction(async (prisma) => {
+            // Retrieve the subscription and the user's identity
+            const subscription = await prisma.subscriptions.findUnique({
+                where: { id: subscriptionId },
+                include: { Identity: true },
+            });
+
+            if (!subscription || !subscription.Identity) {
+                throw new Error(`Subscription or Identity not found for subscriptionId ${subscriptionId}`);
+            }
+
+            const userId = subscription.Identity.id;
+
+            // Atomically decrement the user's credits, ensuring they do not become negative
+            const result = await prisma.$queryRaw<{ credits: number }[]>`
+                UPDATE "Identity"
+                SET credits = CASE WHEN credits > 0 THEN credits - 1 ELSE 0 END
+                WHERE id = ${userId}
+                RETURNING credits;
+            `;
+
+            const updatedCredits = result[0]?.credits;
+
+            if (updatedCredits === undefined) {
+                throw new Error('Failed to update credits');
+            }
+
+            log(`User ${userId} credits updated to ${updatedCredits}`);
+
+            // If the user's credits are zero or less after the update, deactivate all their subscriptions
+            if (updatedCredits <= 0) {
+                // Retrieve all active subscriptions of the user
+                const activeSubscriptions = await prisma.subscriptions.findMany({
+                    where: {
+                        userId,
+                        active: true,
+                    },
+                });
+
+                // Deactivate each subscription
+                for (const sub of activeSubscriptions) {
+                    await this.deactivateSubscription(sub.id);
+                }
+
+                log(`All active subscriptions for user ${userId} have been deactivated due to zero credits.`);
+            }
+        });
     }
 
     async addSubscription(subscription: PrismaSubscription): Promise<void> {
@@ -152,8 +207,8 @@ export class SubscriptionManager {
         }
 
         let nostrEvent = await event.toNostrEvent()
-
         this.dispatcher.enqueueWebhook(nostrEvent, subscriptionId, webhook)
+        this.updateLastSeenAt(subscriptionId, event.created_at ? event.created_at + 1 : nowInSeconds() + 1)
     }
 
     private adjustFilters(lastSeenAt: number | null, filters: NDKFilter[]) {
