@@ -1,6 +1,6 @@
 
 import { ExtendedContext } from '@src/index';
-import { ExtendedRequest, getTagValue, logger, parseEventBody } from '@lawallet/module';
+import { ExtendedRequest, getTagValue, logger, nowInSeconds, parseEventBody } from '@lawallet/module';
 import { z } from 'zod';
 import { Response } from 'express';
 import { Debugger } from 'debug';
@@ -102,11 +102,16 @@ async function handler(
             return;
         }
 
+        const processedFilters = filters.map(filter => ({
+            ...filter,
+            since: filter.since ?? nowInSeconds(), 
+        }));
+
         // Create the subscription in the database
         const subscription = await req.context.prisma.subscriptions.create({
             data: {
                 userId: user.id,
-                filters,
+                filters: processedFilters,
                 relays: normalizedRelays,
                 webhook,
                 active: true,
