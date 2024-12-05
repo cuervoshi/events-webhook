@@ -1,17 +1,21 @@
-# Update Subscriptions
+# Update Subscription
 
-Allows a user to update one of their existing subscriptions by sending an encrypted NIP-04 event to the administrator's public key. The subscription's configuration can be modified, including its filters, relays, webhook, or active status.
+Allows a user to update an existing subscription by sending an event to the administrator's public key. The subscription is identified by its `subscriptionId`, and the user can update the `filters`, `relays`, and `webhook`.
 
 ## Request
-`POST /subscriptions/update`
+`PUT /subscriptions`
 
 ### Parameters
 
 The request body must contain a valid NOSTR event with the following structure:
 
-- **content**: An encrypted NIP-04 message containing the updated subscription details.
+- **content**: A JSON object containing the following fields:
+  - `subscriptionId`: The ID of the subscription to be updated.
+  - `filters`: (Optional) An array of filters to replace the current filters for the subscription.
+  - `relays`: (Optional) An array of relay URLs to replace the current relay list for the subscription.
+  - `webhook`: (Optional) A new webhook URL to replace the current webhook for the subscription.
 - **tags**: Must include:
-  - `["t", "subscription-config"]` to indicate this is a subscription update request.
+  - `["t", "subscription-update"]` to indicate this is a subscription update request.
   - `["p", "ADMIN_PUBKEY"]` to ensure the request is directed to the administrator.
 
 ### Example Request
@@ -19,9 +23,22 @@ The request body must contain a valid NOSTR event with the following structure:
 ```json
 {
   "kind": 21111,
-  "content": "<nip04_encrypted_message>",
+  "content": {
+    "subscriptionId": "XXX",
+    "filters": [
+      {
+        "authors": ["author1"],
+        "kinds": [1, 2],
+      }
+    ],
+    "relays": [
+      "wss://relay.example.com/",
+      "wss://another-relay.example.com/"
+    ],
+    "webhook": "https://webhook.example.com"
+  },
   "tags": [
-    ["t", "subscription-config"],
+    ["t", "subscription-update"],
     ["p", "ADMIN_PUBKEY"]
   ],
   "pubkey": "USER_PUBKEY",
@@ -29,45 +46,26 @@ The request body must contain a valid NOSTR event with the following structure:
 }
 ```
 
-
-### Decrypted Content Example:
-
-```jsonc
-[
-  {
-    "subscriptionId": "XXX",
-    "filters": {
-      // Updated filters for the subscription
-    },
-    "relays": [
-      "wss://updated-relay.example.com"
-    ],
-    "webhook": "https://updated-webhook.example.com",
-    "active": 1
-  },
-  {
-    "subscriptionId": "XXY",
-    ...other_subscription
-  }
-]
-```
-
 ### Validation
 
 The server will validate the following:
 1. **Signature**: The event must be signed by the `pubkey` specified in the request.
 2. **Event Structure**:
-   - The tag `["t", "subscription-config"]` must be present to indicate a subscription update request.
+   - The tag `["t", "subscription-update"]` must be present to indicate a subscription update request.
    - The tag `["p", "ADMIN_PUBKEY"]` must be included to ensure the request is directed to the admin.
-   - The `content` must be a valid NIP-04 encrypted message that decrypts to a list of subscriptions.
+   - The `content` must be a JSON object containing a valid `subscriptionId`.
 3. **Subscription Existence**:
    - The `subscriptionId` must correspond to an existing subscription for the user.
+4. **Optional Fields**:
+   - If provided, `filters` must be a valid array of filters.
+   - If provided, `relays` must be an array of valid relay URLs.
+   - If provided, `webhook` must be a valid URL.
 
-### Response
+## Response
 
 If the request is valid and the subscription is updated successfully, the server will return a success response.
 
-#### Example Response:
+### Example Response
 
 ```json
 {
@@ -78,18 +76,16 @@ If the request is valid and the subscription is updated successfully, the server
 
 If the validation fails or the subscription does not exist, the server will return an error.
 
-#### Example Error Response:
+### Example Error Response
 
 ```json
 {
   "success": false,
-  "error": "Subscription not found."
+  "error": "Subscription not found or validation failed."
 }
 ```
 
-### Notes:
-- The `active` field allows toggling the subscription's state (`1` for active, `0` for inactive).
+### Notes
+- The `subscriptionId` uniquely identifies the subscription to be updated.
 - This endpoint ensures that only the user associated with the `pubkey` in the request can update their subscriptions.
-- The `subscriptionId` acts as a unique identifier for the subscription to be updated.
-
-
+- Updates replace the specified fields (`filters`, `relays`, `webhook`) entirely; any field not included in the request will remain unchanged.
