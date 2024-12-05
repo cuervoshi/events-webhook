@@ -16,6 +16,7 @@ The request body must contain a valid NOSTR event with the following structure:
 
 ### Example Request
 
+```json
 {
   "kind": 21111,
   "content": {
@@ -28,6 +29,7 @@ The request body must contain a valid NOSTR event with the following structure:
   "pubkey": "USER_PUBKEY",
   "sig": "VALID_SIGNATURE"
 }
+```
 
 ### Validation
 
@@ -46,19 +48,23 @@ If the request is valid and the subscription is deleted successfully, the server
 
 ### Example Response
 
+```json
 {
   "success": true,
   "message": "Subscription deleted successfully."
 }
+```
 
 If the validation fails or the subscription does not exist, the server will return an error.
 
 ### Example Error Response
 
+```json
 {
   "success": false,
   "error": "Subscription not found."
 }
+```
 
 ### Notes
 - The `subscriptionId` uniquely identifies the subscription to be deleted.
