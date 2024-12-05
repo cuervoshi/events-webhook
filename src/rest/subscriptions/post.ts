@@ -1,10 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+
 import { ExtendedContext } from '@src/index';
-import { ExtendedRequest, parseEventBody } from '@lawallet/module';
+import { ExtendedRequest, getTagValue, logger, parseEventBody } from '@lawallet/module';
 import { z } from 'zod';
 import { Response } from 'express';
+import { Debugger } from 'debug';
 
-const prisma = new PrismaClient();
+const log: Debugger = logger.extend('rest:subscriptions:post');
 
 // Zod schema for validating NDKFilters
 const StaticNDKFilterSchema = z.object({
@@ -63,10 +64,12 @@ async function handler(
 ) {
     const reqEvent = parseEventBody(req.body);
 
-    if (!reqEvent || reqEvent.kind !== 21111) {
+    log(reqEvent)
+    if (!reqEvent || reqEvent.kind !== 21111 || getTagValue(reqEvent, 't') !== 'new-subscription') {
         res.status(422).json({ success: false, message: 'Invalid event: must be of kind 21111' });
         return;
     }
+    
 
     try {
         // Validate the request body using Zod
@@ -76,7 +79,7 @@ async function handler(
         const normalizedRelays = validateAndNormalizeRelays(relays);
 
         // Check if user exists and has sufficient credits
-        const user = await prisma.identity.findUnique({
+        const user = await req.context.prisma.identity.findUnique({
             where: { pubkey: reqEvent.pubkey },
         });
 
@@ -91,7 +94,7 @@ async function handler(
         }
 
         // Create the subscription in the database
-        const subscription = await prisma.subscriptions.create({
+        const subscription = await req.context.prisma.subscriptions.create({
             data: {
                 userId: user.id,
                 filters,
@@ -102,6 +105,7 @@ async function handler(
         });
 
         req.context.subManager.addSubscription(subscription)
+        req.context.subManager.generateSubscriptionsEvent(user.pubkey)
 
         res.status(201).json({ success: true, subscription });
     } catch (error) {

@@ -1,23 +1,25 @@
 import { PrismaClient, Subscriptions as PrismaSubscription } from '@prisma/client';
 import NDK, { NDKRelay, NDKSubscription, NDKEvent, NDKRelayStatus, NDKFilter } from '@nostr-dev-kit/ndk';
 import { Debugger } from 'debug';
-import { DirectOutbox, logger, nowInSeconds } from '@lawallet/module';
+import { DirectOutbox, logger, nowInSeconds, requiredEnvVar } from '@lawallet/module';
 import redis from '@services/redis';
 import { WebhookDispatcher } from './dispatcher';
+import { buildSubscriptionsEvent } from '@lib/events';
+import { nip04 } from 'nostr-tools';
 
 const log: Debugger = logger.extend('services:subManager');
 
 export class SubscriptionManager {
     private prisma: PrismaClient;
     private ndk: NDK;
-    //private outbox: DirectOutbox;
+    private outbox: DirectOutbox;
     private dispatcher: WebhookDispatcher;
     private subscriptions: Map<string, { subscription: NDKSubscription; data: PrismaSubscription }> = new Map();
 
     constructor(prisma: PrismaClient, outbox: DirectOutbox, ndk: NDK) {
         this.prisma = prisma;
         this.ndk = ndk;
-        //this.outbox = outbox;
+        this.outbox = outbox;
 
         this.ndk.pool.on('relay:connect', (relay: NDKRelay) => {
             this.handleRelayConnect(relay);
@@ -48,11 +50,6 @@ export class SubscriptionManager {
         //log('All active subscriptions with valid credits have been loaded.');
     }
 
-    /**
-     * Deducts one credit from the user who owns the subscription.
-     * If the user runs out of credits, it deactivates all their active subscriptions.
-     * @param subscriptionId - The ID of the subscription.
-     */
     public async discountCredit(subscriptionId: string): Promise<void> {
         await this.prisma.$transaction(async (prisma) => {
             // Retrieve the subscription and the user's identity
@@ -232,6 +229,59 @@ export class SubscriptionManager {
                 relay.subscribe(subscription, this.adjustFilters(data.lastSeenAt, subscription.filters));
                 log(`re-subscribed subscription ${id} to relay ${relay.url}`);
             }
+        }
+    }
+
+    public async generateSubscriptionsEvent(userPubKey: string): Promise<Boolean> {
+        try {
+
+            // Step 1: Retrieve all subscriptions of the user
+            const subscriptions = await this.prisma.subscriptions.findMany({
+                where: {
+                    Identity: {
+                        pubkey: userPubKey,
+                    },
+                },
+                select: {
+                    id: true,
+                    filters: true,
+                    relays: true,
+                    webhook: true,
+                    active: true,
+                },
+            });
+
+            // Format the subscriptions
+            const formattedSubscriptions = subscriptions.map((sub) => ({
+                subscriptionId: sub.id,
+                filters: sub.filters,
+                relays: sub.relays,
+                webhook: sub.webhook,
+                active: sub.active ? 1 : 0,
+            }));
+
+            // Step 2: Create the content JSON
+            const contentObject = {
+                subscriptions: formattedSubscriptions,
+            };
+
+            const contentString = JSON.stringify(contentObject);
+
+            // Step 3: Encrypt the content using NIP-04
+            const encryptedContent = await nip04.encrypt(
+                requiredEnvVar("NOSTR_PRIVATE_KEY"),
+                userPubKey,
+                contentString
+            );
+
+            // Step 4: Publish event
+            await this.outbox.publish(buildSubscriptionsEvent(encryptedContent, userPubKey))
+            log(`Subscriptions event for user ${userPubKey} generated and published.`);
+
+            return true;
+        } catch (err) {
+            log('Error publishing subscription event: ', (err as Error).message)
+            return false
         }
     }
 }

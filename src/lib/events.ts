@@ -29,3 +29,13 @@ export function buildLogEvent(subscriptionId: string, status: string, response: 
         ]
     }
 }
+
+export function buildSubscriptionsEvent(content: string, userPubKey: string): NostrEvent {
+    return {
+        pubkey: requiredEnvVar("NOSTR_PUBLIC_KEY"),
+        kind: 31111,
+        created_at: nowInSeconds(),
+        tags: [['d', `subscriptions:${userPubKey}`]],
+        content,
+    }
+}
