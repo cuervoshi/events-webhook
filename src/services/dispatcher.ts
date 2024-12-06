@@ -87,9 +87,10 @@ export class WebhookDispatcher {
       if (response.status >= 200 && response.status < 300) {
         log(`Webhook sent successfully to ${webhookUrl}`);
 
-        // Log success and update subscription
-        await this.logEvent(subscriptionId, event.id, 'success', null, job.attemptsMade);
+        const jsonResponse = JSON.stringify(await response.json());
 
+        // Log success and update subscription
+        await this.logEvent(subscriptionId, event.id, 'success', jsonResponse, job.attemptsMade);
         await this.subscriptionManager.discountCredit(subscriptionId);
 
         await redis.hSet(cacheKey, 'handled', 'true');

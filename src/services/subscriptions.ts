@@ -4,7 +4,7 @@ import { Debugger } from 'debug';
 import { DirectOutbox, logger, nowInSeconds, requiredEnvVar } from '@lawallet/module';
 import redis from '@services/redis';
 import { WebhookDispatcher } from './dispatcher';
-import { buildSubscriptionsEvent } from '@lib/events';
+import { buildSubscriptionsEvent, buildUserCreditsEvent } from '@lib/events';
 import { nip04 } from 'nostr-tools';
 
 const log: Debugger = logger.extend('services:subManager');
@@ -77,6 +77,8 @@ export class SubscriptionManager {
             if (updatedCredits === undefined) {
                 throw new Error('Failed to update credits');
             }
+
+            await this.outbox.publish(buildUserCreditsEvent(subscription.Identity.pubkey, updatedCredits))
 
             log(`User ${userId} credits updated to ${updatedCredits}`);
 

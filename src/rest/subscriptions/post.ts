@@ -123,7 +123,7 @@ async function handler(
 
         res.status(201).json({ success: true, subscription });
     } catch (error) {
-        console.error(error);
+        log(error);
         res.status(422).json({ success: false, message: error instanceof z.ZodError ? error.errors : (error as Error).message });
     }
 }

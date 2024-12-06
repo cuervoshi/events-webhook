@@ -40,8 +40,6 @@ async function handler(
 ) {
     const reqEvent = parseEventBody(req.body);
 
-    log(reqEvent);
-
     // Validate the Nostr event
     if (!reqEvent || reqEvent.kind !== 21111 || getTagValue(reqEvent, 't') !== 'subscription-update') {
         res.status(422).json({ success: false, message: 'Invalid event: must be of kind 21111 and contain tag "subscription-update"' });
@@ -95,7 +93,7 @@ async function handler(
 
         res.status(200).json({ success: true, subscription: updatedSubscription });
     } catch (error) {
-        console.error(error);
+        log(error);
         res.status(422).json({
             success: false,
             message: error instanceof z.ZodError ? error.errors : (error as Error).message,

@@ -4,7 +4,7 @@ import { NDKFilter, NostrEvent } from 'node_modules/@nostr-dev-kit/ndk/dist';
 import redis from '@services/redis';
 import { Debugger } from 'debug';
 import { ExtendedContext } from '..';
-import { buildCreditsEvent } from '@lib/events';
+import { buildBuyCreditEvent, buildUserCreditsEvent } from '@lib/events';
 
 const log: Debugger = logger.extend('nostr:buyCredits');
 const warn: Debugger = log.extend('warn');
@@ -129,8 +129,16 @@ function getHandler(
         },
       });
 
+      await _ctx.prisma.creditPurchase.create({
+        data: {
+          userId: identity.id,
+          amount: credits,
+          zapReceipt: nostrEvent,
+        }
+      });
       
-      await _ctx.outbox.publish(buildCreditsEvent(identity.pubkey, identity.credits))
+      await _ctx.outbox.publish(buildUserCreditsEvent(identity.pubkey, identity.credits))
+      await _ctx.outbox.publish(buildBuyCreditEvent(identity.pubkey, credits));
       log(`Added ${credits} credits to user with pubkey: ${pubkey}`);
       
       await redis.hSet(event.id, 'handled', 'true');
