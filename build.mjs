@@ -25,17 +25,16 @@ for (const arg of process.argv) {
     case '--watch':
       {
         const ctx = await context(buildOptions);
-        replaceTscAliasPaths({resolveFullPaths: true, watch: true});
+        replaceTscAliasPaths({ resolveFullPaths: true, watch: true });
         await ctx.watch();
       }
       break;
     default:
       {
         const res = await build(buildOptions);
-        replaceTscAliasPaths({resolveFullPaths: true});
+        replaceTscAliasPaths({ resolveFullPaths: true });
         writeFileSync('./dist/meta.json', JSON.stringify(res.metafile));
       }
       break;
   }
 }
-

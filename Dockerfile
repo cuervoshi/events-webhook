@@ -13,7 +13,6 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma/schema.prisma ./prisma/schema.prisma
 RUN ["npm", "i", "-g", "pnpm", "prisma"]
 RUN ["pnpm", "i", "--frozen-lockfile", "--prod"]
-RUN ["pnpm", "add", "-d", "esbuild@^0.20.0"]
 
 
 FROM base AS build
@@ -21,6 +20,7 @@ FROM base AS build
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+RUN ["npm", "install", "esbuild@^0.20.0"]
 RUN ["npm", "run", "build:prod"]
 
 

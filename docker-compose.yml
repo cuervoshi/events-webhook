@@ -1,4 +1,4 @@
-version: "3.8"
+version: '3.8'
 services:
   postgres:
     container_name: postgres
@@ -8,25 +8,45 @@ services:
       DATABASE_HOST: localhost
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: lawallet-extension
+      POSTGRES_DB: nostward-db
     ports:
       - 5432:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -h localhost -d lawallet-extension"]
+      test: ['CMD-SHELL', 'pg_isready -U root -h localhost -d nostward-db']
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 360s
+
+  redis:
+    container_name: redis
+    image: redis:7
+    restart: always
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   migrate:
     image: node:18-alpine3.16
     environment:
-      DATABASE_URL: postgresql://root:root@postgres/lawalte-extension
-    entrypoint: [ 'sh', '-c', 'cd code && npm install --no-save --quiet prisma@5.12.0 && npx prisma migrate deploy']
+      DATABASE_URL: postgresql://root:root@postgres/nostward-db
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        'cd code && npm install --no-save --quiet prisma@5.12.0 && npx prisma migrate deploy',
+      ]
     volumes:
       - ./prisma:/code/prisma
     depends_on:
       postgres:
         condition: service_healthy
+
   app:
     build:
       context: ./
@@ -37,7 +57,11 @@ services:
       - ./.env
     environment:
       NODE_ENV: production
-      DATABASE_URL: "postgresql://root:root@postgres/lawallet-extension"
+      DATABASE_URL: 'postgresql://root:root@postgres/nostward-db'
+      REDIS_URI: 'redis://redis:6379'
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
