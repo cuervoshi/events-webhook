@@ -7,7 +7,7 @@ import {
   getReadNDK,
 } from 'lw-test-module';
 import { PrismaClient } from '@prisma/client';
-import { SubscriptionManager } from '@services/subscriptions';
+import { SubscriptionManager } from './services/subscriptions.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
