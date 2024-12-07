@@ -1,4 +1,4 @@
-import { nowInSeconds, requiredEnvVar } from "@lawallet/module";
+import { nowInSeconds, requiredEnvVar } from "lw-test-module";
 import { NostrEvent } from "@nostr-dev-kit/ndk";
 
 export function buildUserCreditsEvent(pubkey: string, credits: number): NostrEvent {

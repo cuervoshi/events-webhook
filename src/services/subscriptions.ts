@@ -1,11 +1,12 @@
 import { PrismaClient, Subscriptions as PrismaSubscription } from '@prisma/client';
 import NDK, { NDKRelay, NDKSubscription, NDKEvent, NDKRelayStatus, NDKFilter } from '@nostr-dev-kit/ndk';
 import { Debugger } from 'debug';
-import { DirectOutbox, logger, nowInSeconds, requiredEnvVar } from '@lawallet/module';
+import { DirectOutbox, logger, nowInSeconds, requiredEnvVar } from 'lw-test-module';
 import redis from '@services/redis';
 import { WebhookDispatcher } from './dispatcher';
 import { buildSubscriptionsEvent, buildUserCreditsEvent } from '@lib/events';
 import { nip04 } from 'nostr-tools';
+import { getWriteRelaySet } from '@lib/utils';
 
 const log: Debugger = logger.extend('services:subManager');
 
@@ -78,7 +79,9 @@ export class SubscriptionManager {
                 throw new Error('Failed to update credits');
             }
 
-            await this.outbox.publish(buildUserCreditsEvent(subscription.Identity.pubkey, updatedCredits))
+            const relaySet = getWriteRelaySet();
+
+            await this.outbox.publish(buildUserCreditsEvent(subscription.Identity.pubkey, updatedCredits), relaySet)
 
             log(`User ${userId} credits updated to ${updatedCredits}`);
 
@@ -276,8 +279,10 @@ export class SubscriptionManager {
                 contentString
             );
 
+            const relaySet = getWriteRelaySet();
+
             // Step 4: Publish event
-            await this.outbox.publish(buildSubscriptionsEvent(encryptedContent, userPubKey))
+            await this.outbox.publish(buildSubscriptionsEvent(encryptedContent, userPubKey), relaySet)
             log(`Subscriptions event for user ${userPubKey} generated and published.`);
 
             return true;

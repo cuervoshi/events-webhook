@@ -1,6 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 import { Debugger } from 'debug';
-import { logger, requiredEnvVar } from '@lawallet/module';
+import { logger, requiredEnvVar } from 'lw-test-module';
 
 const log: Debugger = logger.extend('services:redis');
 const warn: Debugger = log.extend('warn');

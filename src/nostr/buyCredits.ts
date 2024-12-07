@@ -1,10 +1,11 @@
-import { EventHandler, logger, requiredEnvVar } from '@lawallet/module';
+import { EventHandler, logger, requiredEnvVar } from 'lw-test-module';
 import { NDKEvent } from '@nostr-dev-kit/ndk';
 import { NDKFilter, NostrEvent } from 'node_modules/@nostr-dev-kit/ndk/dist';
 import redis from '@services/redis';
 import { Debugger } from 'debug';
 import { ExtendedContext } from '..';
 import { buildBuyCreditEvent, buildUserCreditsEvent } from '@lib/events';
+import { getWriteRelaySet } from '@lib/utils';
 
 const log: Debugger = logger.extend('nostr:buyCredits');
 const warn: Debugger = log.extend('warn');
@@ -136,9 +137,11 @@ function getHandler(
           zapReceipt: nostrEvent,
         }
       });
+
+      const relaySet = getWriteRelaySet();
       
-      await _ctx.outbox.publish(buildUserCreditsEvent(identity.pubkey, identity.credits))
-      await _ctx.outbox.publish(buildBuyCreditEvent(identity.pubkey, credits));
+      await _ctx.outbox.publish(buildUserCreditsEvent(identity.pubkey, identity.credits), relaySet);
+      await _ctx.outbox.publish(buildBuyCreditEvent(identity.pubkey, credits), relaySet);
       log(`Added ${credits} credits to user with pubkey: ${pubkey}`);
       
       await redis.hSet(event.id, 'handled', 'true');

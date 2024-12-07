@@ -1,11 +1,12 @@
 import fetch from 'node-fetch';
 import { PrismaClient } from '@prisma/client';
-import { DirectOutbox, logger, requiredEnvVar } from '@lawallet/module';
+import { DirectOutbox, logger, requiredEnvVar } from 'lw-test-module';
 import { buildLogEvent } from '@lib/events';
 import { NostrEvent } from '@nostr-dev-kit/ndk';
 import { Queue, Worker, Job } from 'bullmq';
 import redis from '@services/redis';
 import { SubscriptionManager } from './subscriptions';
+import { getWriteRelaySet } from '@lib/utils';
 
 const log = logger.extend('services:webhook');
 
@@ -130,6 +131,7 @@ export class WebhookDispatcher {
       },
     });
 
-    await this.outbox.publish(buildLogEvent(subscriptionId, status, webhookResponse, attempt));
+    const relaySet = getWriteRelaySet();
+    await this.outbox.publish(buildLogEvent(subscriptionId, status, webhookResponse, attempt), relaySet);
   }
 }

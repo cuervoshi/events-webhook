@@ -1,5 +1,5 @@
 import { ExtendedContext } from '@src/index';
-import { ExtendedRequest, getTagValue, logger, parseEventBody } from '@lawallet/module';
+import { ExtendedRequest, getTagValue, logger, parseEventBody } from 'lw-test-module';
 import { z } from 'zod';
 import { Response } from 'express';
 import { Debugger } from 'debug';

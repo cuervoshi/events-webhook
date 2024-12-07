@@ -5,18 +5,20 @@ import {
   DirectOutbox,
   requiredEnvVar,
   getReadNDK,
-} from '@lawallet/module';
+} from 'lw-test-module';
 import { PrismaClient } from '@prisma/client';
-import { SubscriptionManager } from './services/subscriptions.js';
+import { SubscriptionManager } from '@services/subscriptions';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 export type ExtendedContext = DefaultContext & { prisma: PrismaClient, subManager: SubscriptionManager };
 
 const prisma = new PrismaClient()
-const writeNdk = getWriteNDK();
-const outbox = new DirectOutbox(writeNdk);
-const subManager = new SubscriptionManager(prisma, outbox, getReadNDK());
+const writeNDK = getWriteNDK();
+const readNDK = getReadNDK();
+
+const outbox = new DirectOutbox(writeNDK);
+const subManager = new SubscriptionManager(prisma, outbox, readNDK);
 
 const context: ExtendedContext = {
   outbox,
@@ -33,6 +35,8 @@ try {
     nostrPath: `${__dirname}/nostr`,
     port: Number(requiredEnvVar('PORT')),
     restPath: `${__dirname}/rest`,
+    writeNDK,
+    readNDK
   }) as Module<ExtendedContext>;
 
   void module.start();

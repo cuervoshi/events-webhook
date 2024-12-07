@@ -1,4 +1,4 @@
-import { DefaultContext, ExtendedRequest } from "@lawallet/module";
+import { DefaultContext, ExtendedRequest } from "lw-test-module";
 import type { Response } from "express";
 
 function handler<Context extends DefaultContext = DefaultContext>(

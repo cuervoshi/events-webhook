@@ -5,9 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
-  '@lawallet/module':
-    specifier: ~0.8.3
-    version: 0.8.3(typescript@5.4.5)
   '@nostr-dev-kit/ndk':
     specifier: 2.10.7
     version: 2.10.7(typescript@5.4.5)
@@ -35,6 +32,9 @@ dependencies:
   glob:
     specifier: ^10.3.15
     version: 10.3.15
+  lw-test-module:
+    specifier: 0.1.0
+    version: 0.1.0(typescript@5.4.5)
   node-fetch:
     specifier: ^3.3.2
     version: 3.3.2
@@ -1003,32 +1003,6 @@ packages:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
-
-  /@lawallet/module@0.8.3(typescript@5.4.5):
-    resolution: {integrity: sha512-d+bGwun9KeB2IMKHVMA43ishChCMV6F2nvyWd5oQ6L5ckNbQMBsjiwZgvxpqOFv7t/0yK9xtEuXzZqO+TKcitg==}
-    engines: {node: '>=20.11.0'}
-    dependencies:
-      '@nostr-dev-kit/ndk': 2.10.7(typescript@5.4.5)
-      '@types/cors': 2.8.17
-      '@types/morgan': 1.9.9
-      cors: 2.8.5
-      debug: 4.3.4(supports-color@5.5.0)
-      dotenv: 16.4.5
-      express: 4.19.2
-      fs: 0.0.1-security
-      glob: 10.3.15
-      helmet: 7.1.0
-      morgan: 1.10.0
-      nostr-tools: /@lawallet/nostr-tools@1.17.0(typescript@5.4.5)
-      uuid: 9.0.1
-      websocket-polyfill: 0.0.3
-      ws: 8.17.0
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - typescript
-      - utf-8-validate
-    dev: false
 
   /@lawallet/nostr-tools@1.17.0(typescript@5.4.5):
     resolution: {integrity: sha512-oziVdbyoE2QYv+vKizlYe133h9U7+02nOUlFzpyKyffwu5LQnYMjkEJwFUmI4sfwqi5Crc1mwJVPxhmgKewnrw==}
@@ -4350,6 +4324,32 @@ packages:
   /luxon@3.5.0:
     resolution: {integrity: sha512-rh+Zjr6DNfUYR3bPwJEnuwDdqMbxZW7LOQfUN4B54+Cl+0o5zaU9RJ6bcidfDtC1cWCZXQ+nvX8bf6bAji37QQ==}
     engines: {node: '>=12'}
+    dev: false
+
+  /lw-test-module@0.1.0(typescript@5.4.5):
+    resolution: {integrity: sha512-GY6+nNtUB4f+XO/lqibZZauY6pCh65u8vb85N2CFBINZuSZZSxzFHX6vpgIk8u27f1t873cyOq3m1hAhPYmqDg==}
+    engines: {node: '>=20.11.0'}
+    dependencies:
+      '@nostr-dev-kit/ndk': 2.10.7(typescript@5.4.5)
+      '@types/cors': 2.8.17
+      '@types/morgan': 1.9.9
+      cors: 2.8.5
+      debug: 4.3.7
+      dotenv: 16.4.5
+      express: 4.19.2
+      fs: 0.0.1-security
+      glob: 10.3.15
+      helmet: 7.1.0
+      morgan: 1.10.0
+      nostr-tools: /@lawallet/nostr-tools@1.17.0(typescript@5.4.5)
+      uuid: 9.0.1
+      websocket-polyfill: 0.0.3
+      ws: 8.17.0
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
     dev: false
 
   /make-dir@4.0.0:

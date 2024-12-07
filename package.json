@@ -39,7 +39,7 @@
   },
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "@lawallet/module": "~0.8.3",
+    "lw-test-module": "0.1.0",
     "@nostr-dev-kit/ndk": "2.10.7",
     "@prisma/client": "6.0.1",
     "bullmq": "^5.31.0",

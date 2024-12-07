@@ -1,4 +1,4 @@
-import { DefaultContext, ExtendedRequest, getWriteNDK, nowInSeconds, parseEventBody, requiredEnvVar } from '@lawallet/module';
+import { DefaultContext, ExtendedRequest, getWriteNDK, nowInSeconds, parseEventBody, requiredEnvVar } from 'lw-test-module';
 import { NDKEvent, NostrEvent } from '@nostr-dev-kit/ndk';
 import type { Response } from 'express';
 
