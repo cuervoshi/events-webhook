@@ -1,15 +1,15 @@
-import {
-  Module,
-  DefaultContext,
-  getWriteNDK,
-  DirectOutbox,
-  requiredEnvVar,
-  getReadNDK,
-} from 'lw-test-module';
 import { PrismaClient } from '@prisma/client';
-import { SubscriptionManager } from './services/subscriptions.js';
+import {
+  DefaultContext,
+  DirectOutbox,
+  getReadNDK,
+  getWriteNDK,
+  Module,
+  requiredEnvVar,
+} from 'lw-test-module';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import SubscriptionManager from './services/subscriptions.js';
 
 export type ExtendedContext = DefaultContext & { prisma: PrismaClient, subManager: SubscriptionManager };
 

@@ -4,8 +4,8 @@ import { DirectOutbox, logger, requiredEnvVar } from 'lw-test-module';
 import { buildLogEvent } from '@lib/events';
 import { NostrEvent } from '@nostr-dev-kit/ndk';
 import { Queue, Worker, Job } from 'bullmq';
-import redis from '@services/redis';
-import { SubscriptionManager } from './subscriptions';
+import redis from './redis';
+import SubscriptionManager from './subscriptions';
 import { getWriteRelaySet } from '@lib/utils';
 
 const log = logger.extend('services:webhook');
@@ -91,7 +91,7 @@ export class WebhookDispatcher {
         const jsonResponse = JSON.stringify(await response.json());
 
         // Log success and update subscription
-        await this.logEvent(subscriptionId, event.id, 'success', jsonResponse, job.attemptsMade);
+        await this.logEvent(subscriptionId, event.id, 'success', jsonResponse, job.attemptsMade + 1);
         await this.subscriptionManager.discountCredit(subscriptionId);
 
         await redis.hSet(cacheKey, 'handled', 'true');
@@ -99,7 +99,7 @@ export class WebhookDispatcher {
         throw new Error(`Webhook failed with status ${response.status}`);
       }
     } catch (error) {
-      log(`Attempt ${job.attemptsMade} to send webhook failed: ${(error as Error).message}`);
+      log(`Attempt ${job.attemptsMade + 1} to send webhook failed: ${(error as Error).message}`);
 
       // Log retried attempt
       await this.logEvent(

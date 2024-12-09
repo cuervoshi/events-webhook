@@ -2,7 +2,7 @@ import { PrismaClient, Subscriptions as PrismaSubscription } from '@prisma/clien
 import NDK, { NDKRelay, NDKSubscription, NDKEvent, NDKRelayStatus, NDKFilter } from '@nostr-dev-kit/ndk';
 import { Debugger } from 'debug';
 import { DirectOutbox, logger, nowInSeconds, requiredEnvVar } from 'lw-test-module';
-import redis from '@services/redis';
+import redis from './redis';
 import { WebhookDispatcher } from './dispatcher';
 import { buildSubscriptionsEvent, buildUserCreditsEvent } from '@lib/events';
 import { nip04 } from 'nostr-tools';
@@ -10,7 +10,7 @@ import { getWriteRelaySet } from '@lib/utils';
 
 const log: Debugger = logger.extend('services:subManager');
 
-export class SubscriptionManager {
+class SubscriptionManager {
     private prisma: PrismaClient;
     private ndk: NDK;
     private outbox: DirectOutbox;
@@ -82,7 +82,6 @@ export class SubscriptionManager {
             const relaySet = getWriteRelaySet();
 
             await this.outbox.publish(buildUserCreditsEvent(subscription.Identity.pubkey, updatedCredits), relaySet)
-
             log(`User ${userId} credits updated to ${updatedCredits}`);
 
             // If the user's credits are zero or less after the update, deactivate all their subscriptions
@@ -173,12 +172,17 @@ export class SubscriptionManager {
     public async deactivateSubscription(subscriptionId: string): Promise<void> {
         await this.removeSubscription(subscriptionId);
 
-        await this.prisma.subscriptions.update({
+        let updatedSub = await this.prisma.subscriptions.update({
             where: { id: subscriptionId },
             data: {
                 active: false,
             },
+            select: {
+                Identity: true
+            }
         });
+
+        this.generateSubscriptionsEvent(updatedSub.Identity.pubkey)
 
         log(`Subscription ${subscriptionId} deactivated.`);
     }
@@ -292,3 +296,5 @@ export class SubscriptionManager {
         }
     }
 }
+
+export default SubscriptionManager;
