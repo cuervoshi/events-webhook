@@ -17,14 +17,14 @@ class SubscriptionManager {
     private dispatcher: WebhookDispatcher;
     private subscriptions: Map<string, { subscription: NDKSubscription; data: PrismaSubscription }> = new Map();
 
-    constructor(prisma: PrismaClient, outbox: DirectOutbox, ndk: NDK) {
-        this.prisma = prisma;
-        this.ndk = ndk;
+    constructor(prisma: PrismaClient, outbox: DirectOutbox, ndk?: NDK) {this.prisma = prisma;
+        this.ndk = ndk ?? new NDK();
         this.outbox = outbox;
 
         this.ndk.pool.on('relay:connect', (relay: NDKRelay) => {
             this.handleRelayConnect(relay);
         });
+
 
         this.loadSubscriptions();
 
@@ -48,7 +48,7 @@ class SubscriptionManager {
             await this.addSubscription(sub);
         }
 
-        //log('All active subscriptions with valid credits have been loaded.');
+        log('All active subscriptions with valid credits have been loaded.');
     }
 
     public async discountCredit(subscriptionId: string): Promise<void> {
@@ -236,7 +236,7 @@ class SubscriptionManager {
         for (const [id, { subscription, data }] of this.subscriptions.entries()) {
             if (data.relays.includes(relay.url)) {
                 relay.subscribe(subscription, this.adjustFilters(data.lastSeenAt, subscription.filters));
-                log(`re-subscribed subscription ${id} to relay ${relay.url}`);
+                log(`subscribed subscription ${id} to relay ${relay.url}`);
             }
         }
     }

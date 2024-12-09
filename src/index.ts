@@ -18,7 +18,7 @@ const writeNDK = getWriteNDK();
 const readNDK = getReadNDK();
 
 const outbox = new DirectOutbox(writeNDK);
-const subManager = new SubscriptionManager(prisma, outbox, readNDK);
+const subManager = new SubscriptionManager(prisma, outbox);
 
 const context: ExtendedContext = {
   outbox,
