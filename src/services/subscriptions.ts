@@ -265,12 +265,12 @@ class SubscriptionManager {
   private adjustFilters(lastSeenAt: number | null, filters: NDKFilter[]) {
     const adjustedFilters = lastSeenAt
       ? filters.map((filter) => {
-          const adjustedFilter = { ...filter };
-          if (lastSeenAt) {
-            adjustedFilter.since = lastSeenAt;
-          }
-          return adjustedFilter;
-        })
+        const adjustedFilter = { ...filter };
+        if (lastSeenAt) {
+          adjustedFilter.since = lastSeenAt;
+        }
+        return adjustedFilter;
+      })
       : filters;
 
     return adjustedFilters;
