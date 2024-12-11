@@ -9,8 +9,8 @@ dependencies:
     specifier: 2.10.7
     version: 2.10.7(typescript@5.4.5)
   '@prisma/client':
-    specifier: 6.0.1
-    version: 6.0.1(prisma@6.0.1)
+    specifier: 5.9.1
+    version: 5.9.1(prisma@6.0.1)
   bullmq:
     specifier: ^5.31.0
     version: 5.31.2
@@ -1168,9 +1168,9 @@ packages:
     dev: false
     optional: true
 
-  /@prisma/client@6.0.1(prisma@6.0.1):
-    resolution: {integrity: sha512-60w7kL6bUxz7M6Gs/V+OWMhwy94FshpngVmOY05TmGD0Lhk+Ac0ZgtjlL6Wll9TD4G03t4Sq1wZekNVy+Xdlbg==}
-    engines: {node: '>=18.18'}
+  /@prisma/client@5.9.1(prisma@6.0.1):
+    resolution: {integrity: sha512-caSOnG4kxcSkhqC/2ShV7rEoWwd3XrftokxJqOCMVvia4NYV/TPtJlS9C2os3Igxw/Qyxumj9GBQzcStzECvtQ==}
+    engines: {node: '>=16.13'}
     requiresBuild: true
     peerDependencies:
       prisma: '*'
