@@ -39,7 +39,7 @@ services:
       [
         'sh',
         '-c',
-        'cd code && npm install --no-save --quiet prisma@5.12.0 && npx prisma migrate deploy',
+        'cd code && npm install --no-save --quiet prisma@5.9.1 && npx prisma migrate deploy',
       ]
     volumes:
       - ./prisma:/code/prisma
